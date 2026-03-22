@@ -1,51 +1,56 @@
-# Projetos_IA
+# Lights Out
 
-## Nome: Lights Out
-
-### Descrição
-- Jogo solitário  
-- Jogado num tabuleiro de luzes 5x5  
-- Quando o jogo começa, um número aleatório ou um padrão pré-definido de luzes são ligadas  
-- Ao tocar numa luz, ela muda o estado dela e das luzes adjacentes (verticalmente e horizontalmente)  
-  - Se uma luz estava desligada, ela é ligada  
-  - Se uma luz estava ligada, ela é desligada  
-- O objetivo do jogo é desligar todas as luzes do tabuleiro no menor tempo possível
+### Description
+- A single-player puzzle game.
+- Played on a **5x5** grid of lights.
+- At the start of the game, a random number or a predefined pattern of lights is switched on.
+- Pressing any light will toggle its state and the state of its **adjacent** lights (vertically and horizontally).
+    - If a light was **off**, it turns **on**.
+    - If a light was **on**, it turns **off**.
+- **Objective:** Switch off all the lights on the board in the shortest time or fewest moves possible.
 
 ---
 
-## Trabalhos Semelhantes
-*(adicione aqui referências ou projetos similares)*
+## Related Work
+*(Add references or similar projects here)*
 
 ---
 
-## Formulação do Jogo como um Problema de Pesquisa
+## Game Formulation as a Search Problem
 
-### Representação em estados
-- `0` → luz apagada  
-- `1` → luz ligada  
+### State Representation
+The board is represented as a 2D matrix where:
+- `0` → Light is **OFF**
+- `1` → Light is **ON**
 
-### Possível estado inicial
+### Possible Initial State
+```python
+[ 
+  [0, 0, 0, 0, 0],
+  [0, 1, 0, 0, 0],
+  [1, 1, 1, 0, 0],
+  [0, 1, 0, 1, 0],
+  [0, 0, 1, 1, 1] 
+]
+```
 
-[ [0, 0, 0, 0, 0],
-[0, 1, 0, 0, 0],
-[1, 1, 1, 0, 0],
-[0, 1, 0, 1, 0],
-[0, 0, 1, 1, 1] ]
-
-### Estado final
-
-[ [0, 0, 0, 0, 0],
-[0, 0, 0, 0, 0],
-[0, 0, 0, 0, 0],
-[0, 0, 0, 0, 0],
-[0, 0, 0, 0, 0] ]
-
+### Goal State
+```python
+[ 
+  [0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0] 
+]
+```
 
 ---
 
-## Operação
+## Operations (Operators)
 
-- **Nome:** Tocar numa Luz  
-- **Precondição:** o tempo ainda não acabou  
-- **Efeito:** a luz que foi tocada mais as luzes adjacentes mudam de estado  
-- **Custo:** 1
+- **Name:** Toggle Light $(i, j)$
+- **Parameters:** Row $i$ and Column $j$ where $0 \leq i, j < 5$.
+- **Precondition:** None (any cell can be toggled as long as the search is active).
+- **Effect:** The state of the cell at $(i, j)$ and its neighbors $(i+1, j), (i-1, j), (i, j+1), (i, j-1)$ are inverted ($X = 1 - X$).
+- **Cost:** 1 per move.
