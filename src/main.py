@@ -6,7 +6,7 @@ import threading
 import tkinter as tk
 from tkinter import filedialog
 from lightsout import LightsOutState
-from algorithms import solve_bfs, solve_astar
+from algorithms import solve_bfs, solve_astar, solve_gaussian
 from utils import save_benchmark_to_file, load_board_from_txt, BOARDS_DIR
 
 # --- GUI Constants ---
@@ -46,7 +46,7 @@ class LightsOutApp:
         self.ai_result = None
 
         # Modal Selection State
-        self.selected_algos = {"BFS": False, "A*": True}
+        self.selected_algos = {"BFS": False, "A*": True, "Gaussian": False}
 
     def draw_button(self, text, x, y, w, h, color=BTN_COLOR, active=True):
         mouse = pygame.mouse.get_pos()
@@ -87,6 +87,7 @@ class LightsOutApp:
 
         self.rect_bfs = self.draw_checkbox("BFS Algorithm", modal_rect.y + 80, self.selected_algos["BFS"])
         self.rect_astar = self.draw_checkbox("A* Algorithm", modal_rect.y + 130, self.selected_algos["A*"])
+        self.rect_gaussian = self.draw_checkbox("Gaussian Elimination", modal_rect.y + 180, self.selected_algos["Gaussian"])
 
         self.btn_run_ai = self.draw_button("Run First Selected", modal_rect.x + 50, modal_rect.y + 220, 300, 40)
         self.btn_gen_bench = self.draw_button("Generate Benchmark", modal_rect.x + 50, modal_rect.y + 280, 300, 40, color=(50, 120, 50))
@@ -141,8 +142,15 @@ class LightsOutApp:
 
         def task():
             if mode == "SOLVE":
-                algo = "A*" if self.selected_algos["A*"] else "BFS"
-                func = solve_astar if algo == "A*" else solve_bfs
+                if self.selected_algos["Gaussian"]:
+                    algo = "Gaussian"
+                    func = solve_gaussian
+                elif self.selected_algos["A*"]:
+                    algo = "A*"
+                    func = solve_astar
+                else:
+                    algo = "BFS"
+                    func = solve_bfs
                 res = func(LightsOutState(board=board_copy))
                 self.ai_result = ("SOLVE_DONE", res)
             else:
@@ -151,6 +159,8 @@ class LightsOutApp:
                     results["BFS"] = solve_bfs(LightsOutState(board=board_copy))
                 if self.selected_algos["A*"]:
                     results["A*"] = solve_astar(LightsOutState(board=board_copy))
+                if self.selected_algos["Gaussian"]:
+                    results["Gaussian"] = solve_gaussian(LightsOutState(board=board_copy))
                 save_benchmark_to_file(board_copy, results, diff_val)
                 self.ai_result = ("BENCH_DONE", None)
 
@@ -205,6 +215,7 @@ class LightsOutApp:
                     elif self.state == "MODAL":
                         if self.rect_bfs.collidepoint(pos): self.selected_algos["BFS"] = not self.selected_algos["BFS"]
                         if self.rect_astar.collidepoint(pos): self.selected_algos["A*"] = not self.selected_algos["A*"]
+                        if self.rect_gaussian.collidepoint(pos): self.selected_algos["Gaussian"] = not self.selected_algos["Gaussian"]
                         if self.btn_close.collidepoint(pos): self.state = "GAME"
                         if self.btn_run_ai.collidepoint(pos):
                             if any(self.selected_algos.values()):
@@ -229,7 +240,7 @@ class LightsOutApp:
             self.game.toggle(*move)
             self.message = f"AI applying move {move}..."
             self.render_game()
-            pygame.time.wait(300)
+            pygame.time.wait(500)
         self.is_solving = False
         self.message = "Solved!"
 
