@@ -90,3 +90,94 @@ def solve_astar(initial_state: LightsOutState):
                 heapq.heappush(priority_queue, (new_g + h, counter, next_state, path + (action,)))
 
     return None
+
+def solve_gaussian(initial_state: LightsOutState):
+    """
+    Gaussian Elimination over GF(2) for Lights Out.
+    Models the puzzle as a system of linear equations.
+    """
+    import time
+    start_time = time.time()
+    
+    rows, cols = initial_state.rows, initial_state.cols
+    n = rows * cols
+    
+    # Build the augmented matrix [A|b] where A is n x n, b is n x 1
+    # Each row i corresponds to cell i, each column j corresponds to move j
+    augmented = [[0] * (n + 1) for _ in range(n)]
+    
+    # Fill the matrix
+    for i in range(n):
+        row = i // cols
+        col = i % cols
+        # The equation for cell (row, col)
+        # b[i] = initial board state
+        augmented[i][n] = initial_state.board[row][col]
+        
+        # For each possible move j, check if it affects cell i
+        for j in range(n):
+            move_row = j // cols
+            move_col = j % cols
+            # Check if this move affects the current cell
+            if (move_row == row and move_col == col) or \
+               (abs(move_row - row) + abs(move_col - col) == 1):
+                augmented[i][j] = 1
+    
+    # Gaussian elimination over GF(2)
+    operations = 0
+    
+    # Forward elimination
+    for pivot in range(n):
+        # Find pivot row
+        pivot_row = -1
+        for r in range(pivot, n):
+            if augmented[r][pivot] == 1:
+                pivot_row = r
+                break
+        
+        if pivot_row == -1:
+            # No solution or inconsistent system
+            # For Lights Out, this shouldn't happen for solvable puzzles
+            continue
+            
+        # Swap rows if needed
+        if pivot_row != pivot:
+            augmented[pivot], augmented[pivot_row] = augmented[pivot_row], augmented[pivot]
+            operations += 1
+        
+        # Eliminate below
+        for r in range(pivot + 1, n):
+            if augmented[r][pivot] == 1:
+                for c in range(n + 1):
+                    augmented[r][c] ^= augmented[pivot][c]
+                operations += 1
+    
+    # Back substitution
+    solution = [0] * n
+    for i in range(n - 1, -1, -1):
+        if augmented[i][i] == 0:
+            # Free variable, set to 0 (one possible solution)
+            solution[i] = 0
+        else:
+            solution[i] = augmented[i][n]
+            for j in range(i + 1, n):
+                solution[i] ^= (augmented[i][j] * solution[j])
+    
+    # Convert solution to path (list of (row, col) tuples)
+    path = []
+    for i in range(n):
+        if solution[i] == 1:
+            row = i // cols
+            col = i % cols
+            path.append((row, col))
+    
+    execution_time = time.time() - start_time
+    
+    return {
+        "path": path,
+        "metrics": {
+            "time": execution_time,
+            "nodes": operations,  # Number of row operations
+            "memory": n  # Matrix size
+        }
+    }
