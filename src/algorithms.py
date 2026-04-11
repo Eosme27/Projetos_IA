@@ -38,6 +38,53 @@ def solve_bfs(initial_state: LightsOutState):
 
     return None
 
+def solve_ids(initial_state: LightsOutState, max_depth=25):
+    """
+    Iterative Deepening Search (IDS).
+    Combines DFS's space-efficiency and BFS's optimality.
+    """
+    start_time = time.time()
+    nodes_analyzed = 0
+
+    def dls(current_state, path, depth, visited):
+        nonlocal nodes_analyzed
+        nodes_analyzed += 1
+        
+        if current_state.is_goal():
+            return path
+        if depth <= 0:
+            return None
+        
+        # Standard DFS move exploration
+        for next_state, action in current_state.get_successors():
+            # Basic cycle detection within the current branch
+            if next_state not in visited:
+                visited.add(next_state)
+                result = dls(next_state, path + (action,), depth - 1, visited)
+                if result is not None:
+                    return result
+                visited.remove(next_state) # Backtrack
+        return None
+
+    # Main IDS Loop
+    # For a 5x5 board, a solution is always reachable within 25 moves
+    for limit in range(max_depth + 1):
+        # We use a set for path-based cycle detection to keep it efficient
+        found = dls(initial_state, (), limit, {initial_state})
+        if found is not None:
+            execution_time = time.time() - start_time
+            return {
+                "path": list(found),
+                "metrics": {
+                    "time": execution_time,
+                    "nodes": nodes_analyzed,
+                    # Memory in IDS is proportional to the depth of the tree (O(d))
+                    "memory": limit 
+                }
+            }
+
+    return None
+
 def heuristic_hamming(state: LightsOutState):
     """Counts the number of lights currently ON.
     """
@@ -46,21 +93,52 @@ def heuristic_hamming(state: LightsOutState):
         count += sum(row)
     return count
 
-def solve_astar(initial_state: LightsOutState):
+def heuristic_light_chasing(state: LightsOutState):
+    count = 0
+    # Iterate through all rows except the last one
+    for r in range(state.rows - 1):
+        count += sum(state.board[r])
+    return count
+
+def heuristic_islands(state: LightsOutState):
     """
-    A* Search with performance metrics.
+    Counts the number of connected components (islands) of lights.
+    Disconnected lights usually require more moves to 'corral' together.
+    """
+    rows, cols = state.rows, state.cols
+    visited = set()
+    islands = 0
+
+    for r in range(rows):
+        for c in range(cols):
+            # If we find a light that hasn't been visited yet, it's a new island
+            if state.board[r][c] == 1 and (r, c) not in visited:
+                islands += 1
+                # Use a small local BFS to mark all lights in this specific island
+                q = deque([(r, c)])
+                visited.add((r, c))
+                while q:
+                    curr_r, curr_c = q.popleft()
+                    # Check 4-connectivity
+                    for dr, dc in [(0,1), (0,-1), (1,0), (-1,0)]:
+                        nr, nc = curr_r + dr, curr_c + dc
+                        if 0 <= nr < rows and 0 <= nc < cols:
+                            if state.board[nr][nc] == 1 and (nr, nc) not in visited:
+                                visited.add((nr, nc))
+                                q.append((nr, nc))
+    return islands
+
+def solve_astar(initial_state: LightsOutState, heuristic=heuristic_hamming):
+    """
+    A* Search that accepts any heuristic function.
     """
     start_time = time.time()
     nodes_analyzed = 0
     counter = 0 
     
-    # Priority Queue: (f_score, counter, state, path_tuple)
     priority_queue = []
-    h_score = heuristic_hamming(initial_state)
-    # Using tuples for paths saves significant time in state-heavy searches
+    h_score = heuristic(initial_state)
     heapq.heappush(priority_queue, (h_score, counter, initial_state, ()))
-    
-    # Dictionary of state: g_score
     visited = {initial_state: 0}
 
     while priority_queue:
@@ -68,11 +146,10 @@ def solve_astar(initial_state: LightsOutState):
         nodes_analyzed += 1
 
         if current_state.is_goal():
-            execution_time = time.time() - start_time
             return {
                 "path": list(path),
                 "metrics": {
-                    "time": execution_time,
+                    "time": time.time() - start_time,
                     "nodes": nodes_analyzed,
                     "memory": len(visited)
                 }
@@ -81,14 +158,50 @@ def solve_astar(initial_state: LightsOutState):
         g = len(path)
         for next_state, action in current_state.get_successors():
             new_g = g + 1
-            
-            # Standard A* check: is this the cheapest way to reach this state?
             if next_state not in visited or new_g < visited[next_state]:
                 visited[next_state] = new_g
-                h = heuristic_hamming(next_state)
+                h = heuristic(next_state) # Swappable heuristic
                 counter += 1
                 heapq.heappush(priority_queue, (new_g + h, counter, next_state, path + (action,)))
+    return None
 
+def solve_weighted_astar(initial_state: LightsOutState, heuristic=heuristic_hamming, weight=1.5):
+    """
+    Weighted A* Search that accepts any heuristic function.
+    """
+    start_time = time.time()
+    nodes_analyzed = 0
+    counter = 0 
+    
+    priority_queue = []
+    h_init = heuristic(initial_state)
+    heapq.heappush(priority_queue, (weight * h_init, counter, initial_state, ()))
+    visited = {initial_state: 0}
+
+    while priority_queue:
+        f, _, current_state, path = heapq.heappop(priority_queue)
+        nodes_analyzed += 1
+
+        if current_state.is_goal():
+            return {
+                "path": list(path),
+                "metrics": {
+                    "time": time.time() - start_time,
+                    "nodes": nodes_analyzed,
+                    "memory": len(visited),
+                    "weight": weight
+                }
+            }
+
+        g = len(path)
+        for next_state, action in current_state.get_successors():
+            new_g = g + 1
+            if next_state not in visited or new_g < visited[next_state]:
+                visited[next_state] = new_g
+                h = heuristic(next_state) 
+                f_weighted = new_g + (weight * h)
+                counter += 1
+                heapq.heappush(priority_queue, (f_weighted, counter, next_state, path + (action,)))
     return None
 
 def solve_gaussian(initial_state: LightsOutState):
