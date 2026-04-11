@@ -6,11 +6,14 @@ import threading
 import tkinter as tk
 from tkinter import filedialog
 from lightsout import LightsOutState
-from algorithms import solve_bfs, solve_astar, solve_gaussian
-from utils import save_benchmark_to_file, load_board_from_txt, BOARDS_DIR
+from algorithms import (
+    solve_bfs, solve_ids, solve_astar, solve_weighted_astar, solve_gaussian,
+    heuristic_hamming, heuristic_light_chasing, heuristic_islands
+)
+from utils import save_benchmark_to_file, load_board_from_txt, save_board_to_txt, BOARDS_DIR
 
 # --- GUI Constants ---
-WIDTH, HEIGHT = 700, 800
+WIDTH, HEIGHT = 700, 850
 GRID_SIZE = 5
 CELL_SIZE = 80
 MARGIN = 15
@@ -27,6 +30,7 @@ BTN_COLOR = (70, 90, 150)
 BTN_HOVER = (90, 110, 180)
 BTN_DISABLED = (50, 50, 60)
 ACCENT_COLOR = (100, 255, 100)
+DIVIDER_COLOR = (80, 80, 100)
 
 class LightsOutApp:
     def __init__(self):
@@ -45,8 +49,19 @@ class LightsOutApp:
         self.is_solving = False
         self.ai_result = None
 
-        # Modal Selection State
-        self.selected_algos = {"BFS": False, "A*": True, "Gaussian": False}
+        self.selected_algos = {
+            "BFS": False, 
+            "IDS": False, 
+            "A*": True, 
+            "Weighted A*": False, 
+            "Gaussian": False
+        }
+        self.selected_heuristics = {
+            "Hamming": True, 
+            "Light Chasing": False, 
+            "Islands": False
+        }
+        self.h_rects = {} 
 
     def draw_button(self, text, x, y, w, h, color=BTN_COLOR, active=True):
         mouse = pygame.mouse.get_pos()
@@ -57,41 +72,61 @@ class LightsOutApp:
         elif rect.collidepoint(mouse):
             final_color = BTN_HOVER
             
-        pygame.draw.rect(self.screen, final_color, rect, border_radius=5)
+        pygame.draw.rect(self.screen, final_color, rect, border_radius=6)
         text_color = TEXT_COLOR if active else (100, 100, 100)
         text_surf = self.btn_font.render(text, True, text_color)
         self.screen.blit(text_surf, (x + (w - text_surf.get_width()) // 2, y + (h - text_surf.get_height()) // 2))
         return rect
 
-    def draw_checkbox(self, text, y, is_checked):
-        box_rect = pygame.Rect(WIDTH//2 - 150, y, 20, 20)
-        pygame.draw.rect(self.screen, TEXT_COLOR, box_rect, 2)
+    def draw_checkbox(self, text, x, y, is_checked):
+        box_rect = pygame.Rect(x, y, 20, 20)
+        pygame.draw.rect(self.screen, TEXT_COLOR, box_rect, 2, border_radius=4)
         if is_checked:
-            pygame.draw.rect(self.screen, ACCENT_COLOR, box_rect.inflate(-6, -6))
+            pygame.draw.rect(self.screen, ACCENT_COLOR, box_rect.inflate(-6, -6), border_radius=2)
         
         txt = self.btn_font.render(text, True, TEXT_COLOR)
-        self.screen.blit(txt, (box_rect.x + 30, y))
-        return pygame.Rect(box_rect.x, y, 200, 25)
+        self.screen.blit(txt, (box_rect.right + 15, y - 2))
+        return pygame.Rect(x, y, 250, 25)
 
     def render_modal(self):
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180))
+        overlay.fill((0, 0, 0, 190))
         self.screen.blit(overlay, (0,0))
 
-        modal_rect = pygame.Rect(WIDTH//2 - 200, HEIGHT//2 - 200, 400, 400)
+        modal_w, modal_h = 440, 620
+        modal_rect = pygame.Rect(WIDTH//2 - modal_w//2, HEIGHT//2 - modal_h//2, modal_w, modal_h)
         pygame.draw.rect(self.screen, MODAL_BG, modal_rect, border_radius=15)
         pygame.draw.rect(self.screen, ACCENT_COLOR, modal_rect, 2, border_radius=15)
 
         title = self.font_main.render("AI Configuration", True, ACCENT_COLOR)
-        self.screen.blit(title, (WIDTH//2 - title.get_width()//2, modal_rect.y + 20))
+        self.screen.blit(title, (WIDTH//2 - title.get_width()//2, modal_rect.y + 25))
+        pygame.draw.line(self.screen, DIVIDER_COLOR, (modal_rect.x + 20, modal_rect.y + 65), (modal_rect.right - 20, modal_rect.y + 65), 2)
 
-        self.rect_bfs = self.draw_checkbox("BFS Algorithm", modal_rect.y + 80, self.selected_algos["BFS"])
-        self.rect_astar = self.draw_checkbox("A* Algorithm", modal_rect.y + 130, self.selected_algos["A*"])
-        self.rect_gaussian = self.draw_checkbox("Gaussian Elimination", modal_rect.y + 180, self.selected_algos["Gaussian"])
+        start_x = modal_rect.x + 60
+        y_start = modal_rect.y + 85
+        
+        self.rect_bfs = self.draw_checkbox("BFS (Uninformed)", start_x, y_start, self.selected_algos["BFS"])
+        self.rect_ids = self.draw_checkbox("Iterative Deepening", start_x, y_start + 40, self.selected_algos["IDS"])
+        self.rect_astar = self.draw_checkbox("A* (Heuristic)", start_x, y_start + 80, self.selected_algos["A*"])
+        self.rect_wastar = self.draw_checkbox("Weighted A*", start_x, y_start + 120, self.selected_algos["Weighted A*"])
+        self.rect_gaussian = self.draw_checkbox("Gaussian Elimination", start_x, y_start + 160, self.selected_algos["Gaussian"])
 
-        self.btn_run_ai = self.draw_button("Run First Selected", modal_rect.x + 50, modal_rect.y + 220, 300, 40)
-        self.btn_gen_bench = self.draw_button("Generate Benchmark", modal_rect.x + 50, modal_rect.y + 280, 300, 40, color=(50, 120, 50))
-        self.btn_close = self.draw_button("Close", modal_rect.x + 150, modal_rect.y + 340, 100, 30, color=(150, 50, 50))
+        self.h_rects = {} 
+        show_heuristics = self.selected_algos["A*"] or self.selected_algos["Weighted A*"]
+        
+        if show_heuristics:
+            pygame.draw.line(self.screen, DIVIDER_COLOR, (modal_rect.x + 20, y_start + 210), (modal_rect.right - 20, y_start + 210), 2)
+            h_label = self.btn_font.render("Select Heuristics (Checkbox):", True, ACCENT_COLOR)
+            self.screen.blit(h_label, (start_x, y_start + 230))
+            
+            for i, h_name in enumerate(self.selected_heuristics.keys()):
+                rect = self.draw_checkbox(h_name, start_x + 15, y_start + 265 + (i * 35), self.selected_heuristics[h_name])
+                self.h_rects[h_name] = rect
+
+        btn_y = modal_rect.bottom - 165
+        self.btn_run_ai = self.draw_button("Solve Current Board", modal_rect.x + 45, btn_y, modal_w - 90, 40)
+        self.btn_gen_bench = self.draw_button("Generate Benchmark", modal_rect.x + 45, btn_y + 55, modal_w - 90, 40, color=(50, 120, 50))
+        self.btn_close = self.draw_button("Close", WIDTH//2 - 60, btn_y + 115, 120, 30, color=(150, 50, 50))
 
     def render_game(self):
         self.screen.fill(BG_COLOR)
@@ -116,8 +151,13 @@ class LightsOutApp:
                     pygame.draw.rect(self.screen, (255, 255, 255), rect, 2, border_radius=10)
 
         ui_active = (self.state == "GAME" and not self.is_solving)
-        self.btn_open_ai = self.draw_button("AI Options", WIDTH//2 - 150, 620, 300, 50, active=ui_active)
-        self.btn_back = self.draw_button("Back to Menu", WIDTH//2 - 100, 700, 200, 45, color=(150, 50, 50), active=ui_active)
+        
+        # Action Buttons Layout (Rearranged for the two new buttons)
+        self.btn_hint = self.draw_button("Get Hint", WIDTH//2 - 210, 620, 200, 45, color=(180, 120, 50), active=ui_active)
+        self.btn_save = self.draw_button("Save Board", WIDTH//2 + 10, 620, 200, 45, color=(50, 150, 150), active=ui_active)
+        
+        self.btn_open_ai = self.draw_button("AI Options & Benchmark", WIDTH//2 - 150, 680, 300, 45, active=ui_active)
+        self.btn_back = self.draw_button("Back to Menu", WIDTH//2 - 100, 740, 200, 45, color=(150, 50, 50), active=ui_active)
         
         if self.state == "MODAL":
             self.render_modal()
@@ -126,41 +166,62 @@ class LightsOutApp:
     def render_menu(self):
         self.screen.fill(BG_COLOR)
         title = self.font_title.render("LIGHTS OUT", True, CELL_ON)
-        self.screen.blit(title, (WIDTH//2 - title.get_width()//2, 150))
+        self.screen.blit(title, (WIDTH//2 - title.get_width()//2, 160))
+        
         subtitle = self.font_main.render("Select Difficulty:", True, TEXT_COLOR)
-        self.screen.blit(subtitle, (WIDTH//2 - subtitle.get_width()//2, 250))
+        self.screen.blit(subtitle, (WIDTH//2 - subtitle.get_width()//2, 260))
 
-        self.btn_easy = self.draw_button("EASY (3 clicks)", WIDTH//2 - 100, 320, 200, 50)
-        self.btn_med  = self.draw_button("MEDIUM (7 clicks)", WIDTH//2 - 100, 390, 200, 50)
-        self.btn_hard = self.draw_button("HARD (12 clicks)", WIDTH//2 - 100, 460, 200, 50)
-        self.btn_load_menu = self.draw_button("LOAD FROM FILE", WIDTH//2 - 100, 550, 200, 50, color=(100, 100, 100))
+        btn_w = 260
+        self.btn_easy = self.draw_button("EASY (3 clicks)", WIDTH//2 - btn_w//2, 330, btn_w, 50)
+        self.btn_med  = self.draw_button("MEDIUM (7 clicks)", WIDTH//2 - btn_w//2, 400, btn_w, 50)
+        self.btn_hard = self.draw_button("HARD (12 clicks)", WIDTH//2 - btn_w//2, 470, btn_w, 50)
+        
+        pygame.draw.line(self.screen, DIVIDER_COLOR, (WIDTH//2 - 150, 555), (WIDTH//2 + 150, 555), 2)
+        
+        self.btn_load_menu = self.draw_button("LOAD FROM FILE", WIDTH//2 - btn_w//2, 590, btn_w, 50, color=(100, 100, 100))
         pygame.display.flip()
 
     def run_custom_ai(self, mode):
         board_copy = [row[:] for row in self.game.board]
         diff_val = self.difficulty
+        
+        h_map = {
+            "Hamming": heuristic_hamming,
+            "Light Chasing": heuristic_light_chasing,
+            "Islands": heuristic_islands
+        }
+        
+        active_heuristics = [name for name, is_sel in self.selected_heuristics.items() if is_sel]
+        if not active_heuristics:
+            active_heuristics = ["Hamming"]
+            
+        first_h_func = h_map[active_heuristics[0]]
 
         def task():
             if mode == "SOLVE":
-                if self.selected_algos["Gaussian"]:
-                    algo = "Gaussian"
-                    func = solve_gaussian
-                elif self.selected_algos["A*"]:
-                    algo = "A*"
-                    func = solve_astar
-                else:
-                    algo = "BFS"
-                    func = solve_bfs
-                res = func(LightsOutState(board=board_copy))
+                if self.selected_algos["Gaussian"]: res = solve_gaussian(LightsOutState(board=board_copy))
+                elif self.selected_algos["Weighted A*"]: res = solve_weighted_astar(LightsOutState(board=board_copy), heuristic=first_h_func)
+                elif self.selected_algos["A*"]: res = solve_astar(LightsOutState(board=board_copy), heuristic=first_h_func)
+                elif self.selected_algos["IDS"]: res = solve_ids(LightsOutState(board=board_copy))
+                else: res = solve_bfs(LightsOutState(board=board_copy))
+                
                 self.ai_result = ("SOLVE_DONE", res)
             else:
                 results = {}
-                if self.selected_algos["BFS"]:
-                    results["BFS"] = solve_bfs(LightsOutState(board=board_copy))
-                if self.selected_algos["A*"]:
-                    results["A*"] = solve_astar(LightsOutState(board=board_copy))
-                if self.selected_algos["Gaussian"]:
-                    results["Gaussian"] = solve_gaussian(LightsOutState(board=board_copy))
+                state = LightsOutState(board=board_copy)
+                
+                if self.selected_algos["BFS"]: results["BFS"] = solve_bfs(state)
+                if self.selected_algos["IDS"]: results["IDS"] = solve_ids(state)
+                if self.selected_algos["Gaussian"]: results["Gaussian"] = solve_gaussian(state)
+                
+                if self.selected_algos["A*"]: 
+                    for h_name in active_heuristics:
+                        results[f"A* ({h_name})"] = solve_astar(state, heuristic=h_map[h_name])
+                        
+                if self.selected_algos["Weighted A*"]: 
+                    for h_name in active_heuristics:
+                        results[f"WA* ({h_name})"] = solve_weighted_astar(state, heuristic=h_map[h_name])
+                
                 save_benchmark_to_file(board_copy, results, diff_val)
                 self.ai_result = ("BENCH_DONE", None)
 
@@ -182,14 +243,12 @@ class LightsOutApp:
 
             if self.state == "MENU": self.render_menu()
             else: self.render_game()
-
+            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT: pygame.quit(); sys.exit()
-                
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     pos = pygame.mouse.get_pos()
-                    if self.is_solving:
-                        continue 
+                    if self.is_solving: continue
 
                     if self.state == "MENU":
                         if self.btn_easy.collidepoint(pos): self.start_game(3)
@@ -198,11 +257,26 @@ class LightsOutApp:
                         elif self.btn_load_menu.collidepoint(pos):
                             path = self.open_file_dialog()
                             if path: 
-                                loaded = load_board_from_txt(os.path.basename(path))
+                                loaded = load_board_from_txt(path)
                                 if loaded: self.start_game(0, loaded)
                     
                     elif self.state == "GAME":
-                        if self.btn_open_ai.collidepoint(pos): self.state = "MODAL"
+                        # --- New Button Handlers ---
+                        if self.btn_hint.collidepoint(pos):
+                            # Use Gaussian for an instant, optimal hint
+                            res = solve_gaussian(LightsOutState(board=[row[:] for row in self.game.board]))
+                            if res and res['path']:
+                                r, c = res['path'][0]
+                                # Add +1 to row/col so it makes sense to a human player (1-indexed)
+                                self.message = f"Hint: Click Row {r+1}, Col {c+1}"
+                            else:
+                                self.message = "Board is already solved or unsolvable!"
+                                
+                        elif self.btn_save.collidepoint(pos):
+                            save_board_to_txt([row[:] for row in self.game.board])
+                            self.message = "Board saved to text file!"
+                            
+                        elif self.btn_open_ai.collidepoint(pos): self.state = "MODAL"
                         elif self.btn_back.collidepoint(pos): self.state = "MENU"
                         else:
                             for r in range(GRID_SIZE):
@@ -211,11 +285,18 @@ class LightsOutApp:
                                     if rect.collidepoint(pos): 
                                         self.game.toggle(r, c)
                                         if self.game.is_goal(): self.message = "Solved!"
-
+                        
                     elif self.state == "MODAL":
                         if self.rect_bfs.collidepoint(pos): self.selected_algos["BFS"] = not self.selected_algos["BFS"]
+                        if self.rect_ids.collidepoint(pos): self.selected_algos["IDS"] = not self.selected_algos["IDS"]
                         if self.rect_astar.collidepoint(pos): self.selected_algos["A*"] = not self.selected_algos["A*"]
+                        if self.rect_wastar.collidepoint(pos): self.selected_algos["Weighted A*"] = not self.selected_algos["Weighted A*"]
                         if self.rect_gaussian.collidepoint(pos): self.selected_algos["Gaussian"] = not self.selected_algos["Gaussian"]
+                        
+                        for h_name, rect in self.h_rects.items():
+                            if rect.collidepoint(pos): 
+                                self.selected_heuristics[h_name] = not self.selected_heuristics[h_name]
+                            
                         if self.btn_close.collidepoint(pos): self.state = "GAME"
                         if self.btn_run_ai.collidepoint(pos):
                             if any(self.selected_algos.values()):
@@ -224,7 +305,7 @@ class LightsOutApp:
                         if self.btn_gen_bench.collidepoint(pos):
                             if any(self.selected_algos.values()):
                                 self.state = "GAME"; self.is_solving = True
-                                self.message = "Generating Benchmark..."; self.run_custom_ai("BENCH")
+                                self.message = "Benchmarking..."; self.run_custom_ai("BENCH")
 
             self.clock.tick(60)
 
