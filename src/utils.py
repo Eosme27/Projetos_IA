@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 
-# Get the directory where utils.py is located (the 'src' folder)
+# Get the directory where utils.py is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Define paths for the new folders
@@ -13,17 +13,17 @@ BOARDS_DIR = os.path.join(DATA_DIR, "boards")
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 os.makedirs(BOARDS_DIR, exist_ok=True)
 
-def get_timestamped_path():
-    """Generates a full path for a benchmark file: src/data/benchmarks/benchmark_HHMMDDMMYYYY.txt"""
+def get_timestamped_path(directory, prefix="benchmark", extension=".txt"):
+    """Generates a full path for a file with a timestamp."""
     now = datetime.now()
-    filename = now.strftime("benchmark_%H%M%d%m%Y.txt")
-    return os.path.join(BENCHMARK_DIR, filename)
+    filename = now.strftime(f"{prefix}_%H%M%d%m%Y{extension}")
+    return os.path.join(directory, filename)
 
 def save_benchmark_to_file(board, results, difficulty):
     """
-    Saves the board and all algorithm metrics to a new timestamped file in the benchmarks folder.
+    Saves the board and all algorithm metrics to a new timestamped file.
     """
-    filepath = get_timestamped_path()
+    filepath = get_timestamped_path(BENCHMARK_DIR)
     
     with open(filepath, "w") as f:
         f.write("="*40 + "\n")
@@ -50,17 +50,37 @@ def save_benchmark_to_file(board, results, difficulty):
                 f.write(f"Execution Time: {m['time']:.6f} seconds\n")
                 f.write(f"Path: {path}\n")
             else:
-                f.write(f"ALGORITHM: {name}\nStatus: Failed/No Solution\n")
+                f.write(f"ALGORITHM: {name}\nStatus: Failed/No Solution/Timeout\n")
             f.write("-"*40 + "\n")
 
     print(f"\nBenchmark report created in: data/benchmarks/{os.path.basename(filepath)}")
 
-def load_board_from_txt(filename):
+def save_board_to_txt(board, filename=None):
     """
-    Loads a board state from a text file located in src/data/boards/
-    User only needs to provide the filename (e.g., 'puzzle1.txt')
+    Saves a specific board state to a text file so you can build your 'Puzzle Set'.
+    If no filename is provided, generates a timestamped one.
     """
-    filepath = os.path.join(BOARDS_DIR, filename)
+    if filename is None:
+        filepath = get_timestamped_path(BOARDS_DIR, prefix="puzzle")
+    else:
+        filepath = os.path.join(BOARDS_DIR, filename)
+
+    try:
+        with open(filepath, "w") as f:
+            for row in board:
+                f.write(" ".join(map(str, row)) + "\n")
+        print(f"Board saved to {filepath}")
+    except Exception as e:
+        print(f"Failed to save board: {e}")
+
+def load_board_from_txt(filepath):
+    """
+    Loads a board state from a text file. Accepts absolute paths (from GUI)
+    or just filenames (looks in BOARDS_DIR). Includes structural validation.
+    """
+    # If just a filename like 'puzzle1.txt' is passed, assume it's in the BOARDS_DIR
+    if not os.path.isabs(filepath):
+        filepath = os.path.join(BOARDS_DIR, filepath)
     
     if not os.path.exists(filepath):
         print(f"File not found at: {filepath}")
@@ -70,7 +90,23 @@ def load_board_from_txt(filename):
         with open(filepath, "r") as f:
             # Filters empty lines and converts to matrix
             lines = [line.strip() for line in f if line.strip()]
-            return [[int(x) for x in line.split()] for line in lines]
+            board = [[int(x) for x in line.split()] for line in lines]
+            
+            # Validation: Ensure the board is rectangular and contains only 0s and 1s
+            if not board: return None
+            cols = len(board[0])
+            for row in board:
+                if len(row) != cols:
+                    print("Error: Board is not rectangular.")
+                    return None
+                if any(val not in (0, 1) for val in row):
+                    print("Error: Board contains invalid characters (must be 0 or 1).")
+                    return None
+                    
+            return board
+    except ValueError:
+        print("Error: File contains non-numeric data.")
+        return None
     except Exception as e:
         print(f"Error reading file: {e}")
         return None
