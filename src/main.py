@@ -13,11 +13,10 @@ from algorithms import (
 from utils import save_benchmark_to_file, load_board_from_txt, save_board_to_txt, BOARDS_DIR
 
 # --- GUI Constants ---
-WIDTH, HEIGHT = 700, 850
-GRID_SIZE = 5
-CELL_SIZE = 80
-MARGIN = 15
-BOARD_Y_OFFSET = 120
+WIDTH, HEIGHT = 700, 750   # <-- Reduced height for laptop screens
+CELL_SIZE = 65             # <-- Scaled down to fit 6x6 boards safely
+MARGIN = 10                # <-- Tighter spacing
+BOARD_Y_OFFSET = 110
 
 # Colors
 BG_COLOR = (25, 25, 35)
@@ -45,6 +44,7 @@ class LightsOutApp:
         self.state = "MENU" 
         self.game = None
         self.difficulty = 5
+        self.grid_size = 5
         self.message = ""
         self.is_solving = False
         self.ai_result = None
@@ -93,58 +93,58 @@ class LightsOutApp:
         overlay.fill((0, 0, 0, 190))
         self.screen.blit(overlay, (0,0))
 
-        modal_w, modal_h = 440, 620
+        modal_w, modal_h = 440, 580  # Compressed modal height
         modal_rect = pygame.Rect(WIDTH//2 - modal_w//2, HEIGHT//2 - modal_h//2, modal_w, modal_h)
         pygame.draw.rect(self.screen, MODAL_BG, modal_rect, border_radius=15)
         pygame.draw.rect(self.screen, ACCENT_COLOR, modal_rect, 2, border_radius=15)
 
         title = self.font_main.render("AI Configuration", True, ACCENT_COLOR)
-        self.screen.blit(title, (WIDTH//2 - title.get_width()//2, modal_rect.y + 25))
-        pygame.draw.line(self.screen, DIVIDER_COLOR, (modal_rect.x + 20, modal_rect.y + 65), (modal_rect.right - 20, modal_rect.y + 65), 2)
+        self.screen.blit(title, (WIDTH//2 - title.get_width()//2, modal_rect.y + 20))
+        pygame.draw.line(self.screen, DIVIDER_COLOR, (modal_rect.x + 20, modal_rect.y + 55), (modal_rect.right - 20, modal_rect.y + 55), 2)
 
         start_x = modal_rect.x + 60
-        y_start = modal_rect.y + 85
+        y_start = modal_rect.y + 75
         
         self.rect_bfs = self.draw_checkbox("BFS (Uninformed)", start_x, y_start, self.selected_algos["BFS"])
-        self.rect_ids = self.draw_checkbox("Iterative Deepening", start_x, y_start + 40, self.selected_algos["IDS"])
-        self.rect_astar = self.draw_checkbox("A* (Heuristic)", start_x, y_start + 80, self.selected_algos["A*"])
-        self.rect_wastar = self.draw_checkbox("Weighted A*", start_x, y_start + 120, self.selected_algos["Weighted A*"])
-        self.rect_gaussian = self.draw_checkbox("Gaussian Elimination", start_x, y_start + 160, self.selected_algos["Gaussian"])
+        self.rect_ids = self.draw_checkbox("Iterative Deepening", start_x, y_start + 35, self.selected_algos["IDS"])
+        self.rect_astar = self.draw_checkbox("A* (Heuristic)", start_x, y_start + 70, self.selected_algos["A*"])
+        self.rect_wastar = self.draw_checkbox("Weighted A*", start_x, y_start + 105, self.selected_algos["Weighted A*"])
+        self.rect_gaussian = self.draw_checkbox("Gaussian Elimination", start_x, y_start + 140, self.selected_algos["Gaussian"])
 
         self.h_rects = {} 
         show_heuristics = self.selected_algos["A*"] or self.selected_algos["Weighted A*"]
         
         if show_heuristics:
-            pygame.draw.line(self.screen, DIVIDER_COLOR, (modal_rect.x + 20, y_start + 210), (modal_rect.right - 20, y_start + 210), 2)
+            pygame.draw.line(self.screen, DIVIDER_COLOR, (modal_rect.x + 20, y_start + 185), (modal_rect.right - 20, y_start + 185), 2)
             h_label = self.btn_font.render("Select Heuristics (Checkbox):", True, ACCENT_COLOR)
-            self.screen.blit(h_label, (start_x, y_start + 230))
+            self.screen.blit(h_label, (start_x, y_start + 200))
             
             for i, h_name in enumerate(self.selected_heuristics.keys()):
-                rect = self.draw_checkbox(h_name, start_x + 15, y_start + 265 + (i * 35), self.selected_heuristics[h_name])
+                rect = self.draw_checkbox(h_name, start_x + 15, y_start + 235 + (i * 35), self.selected_heuristics[h_name])
                 self.h_rects[h_name] = rect
 
-        btn_y = modal_rect.bottom - 165
+        btn_y = modal_rect.bottom - 140
         self.btn_run_ai = self.draw_button("Solve Current Board", modal_rect.x + 45, btn_y, modal_w - 90, 40)
-        self.btn_gen_bench = self.draw_button("Generate Benchmark", modal_rect.x + 45, btn_y + 55, modal_w - 90, 40, color=(50, 120, 50))
-        self.btn_close = self.draw_button("Close", WIDTH//2 - 60, btn_y + 115, 120, 30, color=(150, 50, 50))
+        self.btn_gen_bench = self.draw_button("Generate Benchmark", modal_rect.x + 45, btn_y + 50, modal_w - 90, 40, color=(50, 120, 50))
+        self.btn_close = self.draw_button("Close", WIDTH//2 - 60, btn_y + 100, 120, 30, color=(150, 50, 50))
 
     def render_game(self):
         self.screen.fill(BG_COLOR)
         title = self.font_main.render("LIGHTS OUT", True, (255, 255, 255))
-        self.screen.blit(title, (WIDTH//2 - title.get_width()//2, 30))
+        self.screen.blit(title, (WIDTH//2 - title.get_width()//2, 25))
         
         status_color = ACCENT_COLOR if "Solved" in self.message else TEXT_COLOR
         status = self.btn_font.render(self.message, True, status_color)
-        self.screen.blit(status, (WIDTH//2 - status.get_width()//2, 75))
+        self.screen.blit(status, (WIDTH//2 - status.get_width()//2, 65))
 
-        for r in range(GRID_SIZE):
-            for c in range(GRID_SIZE):
+        for r in range(self.game.rows):
+            for c in range(self.game.cols):
                 if self.is_solving:
                     color = CELL_ON if self.game.board[r][c] == 1 else CELL_LOCKED
                 else:
                     color = CELL_ON if self.game.board[r][c] == 1 else CELL_OFF
                 
-                rect = pygame.Rect((WIDTH - (GRID_SIZE * (CELL_SIZE + MARGIN))) // 2 + c * (CELL_SIZE + MARGIN), 
+                rect = pygame.Rect((WIDTH - (self.game.cols * (CELL_SIZE + MARGIN))) // 2 + c * (CELL_SIZE + MARGIN), 
                                    BOARD_Y_OFFSET + r * (CELL_SIZE + MARGIN), CELL_SIZE, CELL_SIZE)
                 pygame.draw.rect(self.screen, color, rect, border_radius=10)
                 if self.game.board[r][c] == 1:
@@ -152,12 +152,12 @@ class LightsOutApp:
 
         ui_active = (self.state == "GAME" and not self.is_solving)
         
-        # Action Buttons Layout (Rearranged for the two new buttons)
-        self.btn_hint = self.draw_button("Get Hint", WIDTH//2 - 210, 620, 200, 45, color=(180, 120, 50), active=ui_active)
-        self.btn_save = self.draw_button("Save Board", WIDTH//2 + 10, 620, 200, 45, color=(50, 150, 150), active=ui_active)
+        # Compressed UI layout for the game buttons
+        self.btn_hint = self.draw_button("Get Hint", WIDTH//2 - 210, 560, 200, 45, color=(180, 120, 50), active=ui_active)
+        self.btn_save = self.draw_button("Save Board", WIDTH//2 + 10, 560, 200, 45, color=(50, 150, 150), active=ui_active)
         
-        self.btn_open_ai = self.draw_button("AI Options & Benchmark", WIDTH//2 - 150, 680, 300, 45, active=ui_active)
-        self.btn_back = self.draw_button("Back to Menu", WIDTH//2 - 100, 740, 200, 45, color=(150, 50, 50), active=ui_active)
+        self.btn_open_ai = self.draw_button("AI Options & Benchmark", WIDTH//2 - 150, 620, 300, 45, active=ui_active)
+        self.btn_back = self.draw_button("Back to Menu", WIDTH//2 - 100, 680, 200, 45, color=(150, 50, 50), active=ui_active)
         
         if self.state == "MODAL":
             self.render_modal()
@@ -166,19 +166,21 @@ class LightsOutApp:
     def render_menu(self):
         self.screen.fill(BG_COLOR)
         title = self.font_title.render("LIGHTS OUT", True, CELL_ON)
-        self.screen.blit(title, (WIDTH//2 - title.get_width()//2, 160))
+        self.screen.blit(title, (WIDTH//2 - title.get_width()//2, 100))
+        
+        btn_w = 260
+        self.btn_size = self.draw_button(f"Grid Size: {self.grid_size} x {self.grid_size}", WIDTH//2 - btn_w//2, 180, btn_w, 40, color=(100, 50, 150))
         
         subtitle = self.font_main.render("Select Difficulty:", True, TEXT_COLOR)
-        self.screen.blit(subtitle, (WIDTH//2 - subtitle.get_width()//2, 260))
+        self.screen.blit(subtitle, (WIDTH//2 - subtitle.get_width()//2, 250))
 
-        btn_w = 260
-        self.btn_easy = self.draw_button("EASY (3 clicks)", WIDTH//2 - btn_w//2, 330, btn_w, 50)
-        self.btn_med  = self.draw_button("MEDIUM (7 clicks)", WIDTH//2 - btn_w//2, 400, btn_w, 50)
-        self.btn_hard = self.draw_button("HARD (12 clicks)", WIDTH//2 - btn_w//2, 470, btn_w, 50)
+        self.btn_easy = self.draw_button("EASY (3 clicks)", WIDTH//2 - btn_w//2, 300, btn_w, 50)
+        self.btn_med  = self.draw_button("MEDIUM (7 clicks)", WIDTH//2 - btn_w//2, 370, btn_w, 50)
+        self.btn_hard = self.draw_button("HARD (12 clicks)", WIDTH//2 - btn_w//2, 440, btn_w, 50)
         
-        pygame.draw.line(self.screen, DIVIDER_COLOR, (WIDTH//2 - 150, 555), (WIDTH//2 + 150, 555), 2)
+        pygame.draw.line(self.screen, DIVIDER_COLOR, (WIDTH//2 - 150, 520), (WIDTH//2 + 150, 520), 2)
         
-        self.btn_load_menu = self.draw_button("LOAD FROM FILE", WIDTH//2 - btn_w//2, 590, btn_w, 50, color=(100, 100, 100))
+        self.btn_load_menu = self.draw_button("LOAD FROM FILE", WIDTH//2 - btn_w//2, 560, btn_w, 50, color=(100, 100, 100))
         pygame.display.flip()
 
     def run_custom_ai(self, mode):
@@ -251,7 +253,10 @@ class LightsOutApp:
                     if self.is_solving: continue
 
                     if self.state == "MENU":
-                        if self.btn_easy.collidepoint(pos): self.start_game(3)
+                        if self.btn_size.collidepoint(pos):
+                            self.grid_size += 1
+                            if self.grid_size > 6: self.grid_size = 3
+                        elif self.btn_easy.collidepoint(pos): self.start_game(3)
                         elif self.btn_med.collidepoint(pos): self.start_game(7)
                         elif self.btn_hard.collidepoint(pos): self.start_game(12)
                         elif self.btn_load_menu.collidepoint(pos):
@@ -261,13 +266,10 @@ class LightsOutApp:
                                 if loaded: self.start_game(0, loaded)
                     
                     elif self.state == "GAME":
-                        # --- New Button Handlers ---
                         if self.btn_hint.collidepoint(pos):
-                            # Use Gaussian for an instant, optimal hint
                             res = solve_gaussian(LightsOutState(board=[row[:] for row in self.game.board]))
                             if res and res['path']:
                                 r, c = res['path'][0]
-                                # Add +1 to row/col so it makes sense to a human player (1-indexed)
                                 self.message = f"Hint: Click Row {r+1}, Col {c+1}"
                             else:
                                 self.message = "Board is already solved or unsolvable!"
@@ -279,9 +281,9 @@ class LightsOutApp:
                         elif self.btn_open_ai.collidepoint(pos): self.state = "MODAL"
                         elif self.btn_back.collidepoint(pos): self.state = "MENU"
                         else:
-                            for r in range(GRID_SIZE):
-                                for c in range(GRID_SIZE):
-                                    rect = pygame.Rect((WIDTH - (GRID_SIZE * (CELL_SIZE + MARGIN))) // 2 + c * (CELL_SIZE + MARGIN), BOARD_Y_OFFSET + r * (CELL_SIZE + MARGIN), CELL_SIZE, CELL_SIZE)
+                            for r in range(self.game.rows):
+                                for c in range(self.game.cols):
+                                    rect = pygame.Rect((WIDTH - (self.game.cols * (CELL_SIZE + MARGIN))) // 2 + c * (CELL_SIZE + MARGIN), BOARD_Y_OFFSET + r * (CELL_SIZE + MARGIN), CELL_SIZE, CELL_SIZE)
                                     if rect.collidepoint(pos): 
                                         self.game.toggle(r, c)
                                         if self.game.is_goal(): self.message = "Solved!"
@@ -310,7 +312,7 @@ class LightsOutApp:
             self.clock.tick(60)
 
     def start_game(self, diff, board=None):
-        self.game = LightsOutState(board=board)
+        self.game = LightsOutState(board=board, rows=self.grid_size, cols=self.grid_size)
         self.difficulty = diff if board is None else "Custom"
         if board is None: self.game.generate_random_solvable(num_clicks=diff)
         self.message = "Human Play Mode"; self.state = "GAME"

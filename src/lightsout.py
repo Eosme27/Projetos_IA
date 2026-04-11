@@ -2,14 +2,17 @@ import random
 from copy import deepcopy
 
 class LightsOutState:
-    def __init__(self, board=None):
-        self.rows = 5
-        self.cols = 5
+    def __init__(self, board=None, rows=5, cols=5):
         if board is None:
+            self.rows = rows
+            self.cols = cols
             # Create a clean board (all off) by default
             self.board = [[0 for _ in range(self.cols)] for _ in range(self.rows)]
         else:
             self.board = deepcopy(board)
+            # Dynamically set rows and cols based on the loaded board
+            self.rows = len(self.board)
+            self.cols = len(self.board[0]) if self.rows > 0 else 0
     
     def generate_random_solvable(self, num_clicks=5):
         """
