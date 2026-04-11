@@ -1,0 +1,62 @@
+========================================
+LIGHTS OUT AI BENCHMARK REPORT
+Date/Time: 2026-04-11 04:20:07
+Initial Difficulty (Random Clicks): 3
+========================================
+
+Initial Board State:
+0 0 0 0 0
+1 0 0 0 0
+0 1 0 0 1
+0 1 0 1 1
+1 0 0 0 1
+
+----------------------------------------
+ALGORITHM: A* (Hamming)
+Status: Solved
+Solution Length: 3 moves
+Nodes Analyzed: 4
+Memory (States in RAM): 73
+Execution Time: 0.001548 seconds
+Path: [(3, 4), (2, 0), (3, 0)]
+----------------------------------------
+ALGORITHM: A* (Light Chasing)
+Status: Solved
+Solution Length: 3 moves
+Nodes Analyzed: 5
+Memory (States in RAM): 95
+Execution Time: 0.002054 seconds
+Path: [(3, 4), (2, 0), (3, 0)]
+----------------------------------------
+ALGORITHM: A* (Islands)
+Status: Solved
+Solution Length: 3 moves
+Nodes Analyzed: 12
+Memory (States in RAM): 246
+Execution Time: 0.009249 seconds
+Path: [(2, 0), (3, 0), (3, 4)]
+----------------------------------------
+ALGORITHM: WA* (Hamming)
+Status: Solved
+Solution Length: 3 moves
+Nodes Analyzed: 4
+Memory (States in RAM): 73
+Execution Time: 0.001003 seconds
+Path: [(3, 4), (2, 0), (3, 0)]
+----------------------------------------
+ALGORITHM: WA* (Light Chasing)
+Status: Solved
+Solution Length: 5 moves
+Nodes Analyzed: 6
+Memory (States in RAM): 119
+Execution Time: 0.003996 seconds
+Path: [(3, 4), (4, 1), (2, 0), (3, 0), (4, 1)]
+----------------------------------------
+ALGORITHM: WA* (Islands)
+Status: Solved
+Solution Length: 3 moves
+Nodes Analyzed: 5
+Memory (States in RAM): 95
+Execution Time: 0.002594 seconds
+Path: [(2, 0), (3, 0), (3, 4)]
+----------------------------------------
