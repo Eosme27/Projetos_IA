@@ -1,8 +1,7 @@
 import pygame
 import sys
-import time
-import os
 import threading
+import multiprocessing
 import tkinter as tk
 from tkinter import filedialog
 from lightsout import LightsOutState
@@ -12,10 +11,19 @@ from algorithms import (
 )
 from utils import save_benchmark_to_file, load_board_from_txt, save_board_to_txt, BOARDS_DIR
 
+def run_algorithm_worker(func, state, heuristic, return_dict):
+    try:
+        if heuristic:
+            return_dict['result'] = func(state, heuristic=heuristic)
+        else:
+            return_dict['result'] = func(state)
+    except Exception as e:
+        return_dict['error'] = str(e)
+
 # --- GUI Constants ---
-WIDTH, HEIGHT = 700, 750   # <-- Reduced height for laptop screens
-CELL_SIZE = 65             # <-- Scaled down to fit 6x6 boards safely
-MARGIN = 10                # <-- Tighter spacing
+WIDTH, HEIGHT = 700, 750
+CELL_SIZE = 65
+MARGIN = 10
 BOARD_Y_OFFSET = 110
 
 # Colors
@@ -93,7 +101,7 @@ class LightsOutApp:
         overlay.fill((0, 0, 0, 190))
         self.screen.blit(overlay, (0,0))
 
-        modal_w, modal_h = 440, 580  # Compressed modal height
+        modal_w, modal_h = 440, 580
         modal_rect = pygame.Rect(WIDTH//2 - modal_w//2, HEIGHT//2 - modal_h//2, modal_w, modal_h)
         pygame.draw.rect(self.screen, MODAL_BG, modal_rect, border_radius=15)
         pygame.draw.rect(self.screen, ACCENT_COLOR, modal_rect, 2, border_radius=15)
@@ -152,7 +160,6 @@ class LightsOutApp:
 
         ui_active = (self.state == "GAME" and not self.is_solving)
         
-        # Compressed UI layout for the game buttons
         self.btn_hint = self.draw_button("Get Hint", WIDTH//2 - 210, 560, 200, 45, color=(180, 120, 50), active=ui_active)
         self.btn_save = self.draw_button("Save Board", WIDTH//2 + 10, 560, 200, 45, color=(50, 150, 150), active=ui_active)
         
@@ -200,29 +207,61 @@ class LightsOutApp:
         first_h_func = h_map[active_heuristics[0]]
 
         def task():
-            if mode == "SOLVE":
-                if self.selected_algos["Gaussian"]: res = solve_gaussian(LightsOutState(board=board_copy))
-                elif self.selected_algos["Weighted A*"]: res = solve_weighted_astar(LightsOutState(board=board_copy), heuristic=first_h_func)
-                elif self.selected_algos["A*"]: res = solve_astar(LightsOutState(board=board_copy), heuristic=first_h_func)
-                elif self.selected_algos["IDS"]: res = solve_ids(LightsOutState(board=board_copy))
-                else: res = solve_bfs(LightsOutState(board=board_copy))
+            # --- New Hard-Kill Execution using Multiprocessing ---
+            def execute_with_timeout(func, state, heuristic=None, timeout=60):
+                manager = multiprocessing.Manager()
+                return_dict = manager.dict()
                 
-                self.ai_result = ("SOLVE_DONE", res)
+                # Create a completely separate CPU process
+                p = multiprocessing.Process(target=run_algorithm_worker, args=(func, state, heuristic, return_dict))
+                p.start()
+                
+                # Wait for the process to finish, or until 60 seconds pass
+                p.join(timeout)
+                
+                if p.is_alive():
+                    # If it's still running after 60s, ruthlessly terminate it.
+                    p.terminate()
+                    p.join()  # Clean up the dead process
+                    return {"timeout": True}
+                    
+                return return_dict.get('result', None)
+
+            if mode == "SOLVE":
+                # For pure solving, we use the timeout too to prevent UI freezes
+                if self.selected_algos["Gaussian"]: res = execute_with_timeout(solve_gaussian, LightsOutState(board=board_copy))
+                elif self.selected_algos["Weighted A*"]: res = execute_with_timeout(solve_weighted_astar, LightsOutState(board=board_copy), heuristic=first_h_func)
+                elif self.selected_algos["A*"]: res = execute_with_timeout(solve_astar, LightsOutState(board=board_copy), heuristic=first_h_func)
+                elif self.selected_algos["IDS"]: res = execute_with_timeout(solve_ids, LightsOutState(board=board_copy))
+                else: res = execute_with_timeout(solve_bfs, LightsOutState(board=board_copy))
+                
+                if res and res.get("timeout"):
+                    self.ai_result = ("SOLVE_DONE", None) # Treat timeout as failure to solve
+                else:
+                    self.ai_result = ("SOLVE_DONE", res)
             else:
                 results = {}
                 state = LightsOutState(board=board_copy)
                 
-                if self.selected_algos["BFS"]: results["BFS"] = solve_bfs(state)
-                if self.selected_algos["IDS"]: results["IDS"] = solve_ids(state)
-                if self.selected_algos["Gaussian"]: results["Gaussian"] = solve_gaussian(state)
+                if self.selected_algos["BFS"]: 
+                    self.message = "Benchmarking BFS..."
+                    results["BFS"] = execute_with_timeout(solve_bfs, state)
+                if self.selected_algos["IDS"]: 
+                    self.message = "Benchmarking IDS..."
+                    results["IDS"] = execute_with_timeout(solve_ids, state)
+                if self.selected_algos["Gaussian"]: 
+                    self.message = "Benchmarking Gaussian..."
+                    results["Gaussian"] = execute_with_timeout(solve_gaussian, state)
                 
                 if self.selected_algos["A*"]: 
                     for h_name in active_heuristics:
-                        results[f"A* ({h_name})"] = solve_astar(state, heuristic=h_map[h_name])
+                        self.message = f"Benchmarking A* ({h_name})..."
+                        results[f"A* ({h_name})"] = execute_with_timeout(solve_astar, state, heuristic=h_map[h_name])
                         
                 if self.selected_algos["Weighted A*"]: 
                     for h_name in active_heuristics:
-                        results[f"WA* ({h_name})"] = solve_weighted_astar(state, heuristic=h_map[h_name])
+                        self.message = f"Benchmarking WA* ({h_name})..."
+                        results[f"WA* ({h_name})"] = execute_with_timeout(solve_weighted_astar, state, heuristic=h_map[h_name])
                 
                 save_benchmark_to_file(board_copy, results, diff_val)
                 self.ai_result = ("BENCH_DONE", None)
@@ -237,7 +276,7 @@ class LightsOutApp:
                 if res_type == "SOLVE_DONE":
                     if data: self.animate_solution(data['path'])
                     else: 
-                        self.message = "AI found no solution."
+                        self.message = "AI Timeout (>60s) or no solution."
                         self.is_solving = False
                 elif res_type == "BENCH_DONE":
                     self.message = "Benchmark Complete!"
@@ -303,11 +342,13 @@ class LightsOutApp:
                         if self.btn_run_ai.collidepoint(pos):
                             if any(self.selected_algos.values()):
                                 self.state = "GAME"; self.is_solving = True
-                                self.message = "AI Calculating..."; self.run_custom_ai("SOLVE")
+                                self.message = "AI Calculating..."
+                                self.run_custom_ai("SOLVE")
                         if self.btn_gen_bench.collidepoint(pos):
                             if any(self.selected_algos.values()):
                                 self.state = "GAME"; self.is_solving = True
-                                self.message = "Benchmarking..."; self.run_custom_ai("BENCH")
+                                self.message = "Benchmarking..."
+                                self.run_custom_ai("BENCH")
 
             self.clock.tick(60)
 
@@ -334,4 +375,6 @@ class LightsOutApp:
         return fp
 
 if __name__ == "__main__":
-    app = LightsOutApp(); app.main_loop()
+    multiprocessing.freeze_support() 
+    app = LightsOutApp()
+    app.main_loop()

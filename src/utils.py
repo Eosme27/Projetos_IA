@@ -39,7 +39,12 @@ def save_benchmark_to_file(board, results, difficulty):
         f.write("\n" + "-"*40 + "\n")
         
         for name, res in results.items():
-            if res:
+            if res and res.get("timeout"):
+                f.write(f"ALGORITHM: {name}\n")
+                f.write(f"Status: Timeout (>60s)\n")
+                f.write(f"Execution Time: >60.000000 seconds\n")
+                f.write(f"Path: N/A\n")
+            elif res:
                 path = res["path"]
                 m = res["metrics"]
                 f.write(f"ALGORITHM: {name}\n")
@@ -50,7 +55,7 @@ def save_benchmark_to_file(board, results, difficulty):
                 f.write(f"Execution Time: {m['time']:.6f} seconds\n")
                 f.write(f"Path: {path}\n")
             else:
-                f.write(f"ALGORITHM: {name}\nStatus: Failed/No Solution/Timeout\n")
+                f.write(f"ALGORITHM: {name}\nStatus: Failed/No Solution\n")
             f.write("-"*40 + "\n")
 
     print(f"\nBenchmark report created in: data/benchmarks/{os.path.basename(filepath)}")
@@ -78,7 +83,6 @@ def load_board_from_txt(filepath):
     Loads a board state from a text file. Accepts absolute paths (from GUI)
     or just filenames (looks in BOARDS_DIR). Includes structural validation.
     """
-    # If just a filename like 'puzzle1.txt' is passed, assume it's in the BOARDS_DIR
     if not os.path.isabs(filepath):
         filepath = os.path.join(BOARDS_DIR, filepath)
     
@@ -88,11 +92,9 @@ def load_board_from_txt(filepath):
         
     try:
         with open(filepath, "r") as f:
-            # Filters empty lines and converts to matrix
             lines = [line.strip() for line in f if line.strip()]
             board = [[int(x) for x in line.split()] for line in lines]
             
-            # Validation: Ensure the board is rectangular and contains only 0s and 1s
             if not board: return None
             cols = len(board[0])
             for row in board:
