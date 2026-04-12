@@ -21,16 +21,16 @@ A technical report can be found [here](./docs/report.md).
 2. **Iterative Deepening Search (IDS)** - Optimal and highly memory-efficient.
 
 **Informed (Heuristic) Search:**
-3. **A* Search** - Optimal (with admissible heuristics).
-4. **Weighted A*** - Sub-optimal but designed for high-speed solving.
+1. **A-star Search** - Optimal (with admissible heuristics).
+2. **Weighted A-star** - Sub-optimal but designed for high-speed solving.
 
 **Mathematical/Algebraic:**
-5. **Gaussian Elimination over GF(2)** - Instant and optimal.
+1. **Gaussian Elimination over GF(2)** - Instant and optimal.
 
 **Available Heuristics:**
-* **Hamming:** Counts the total number of lights currently ON.
-* **Light Chasing:** Counts lights ON in all rows except the bottom row.
-* **Islands:** Calculates the number of disconnected clusters (connected components) of lights.
+1. **Hamming:** Counts the total number of lights currently ON.
+2. **Light Chasing:** Counts lights ON in all rows except the bottom row.
+3. **Islands:** Calculates the number of disconnected clusters (connected components) of lights.
 
 ---
 
