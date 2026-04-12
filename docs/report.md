@@ -93,6 +93,27 @@ The Islands heuristic attempts to capture the spatial relationships between acti
 
 ## 4. Benchmark Analysis & Findings
 
+To evaluate the scalability and practical efficacy of the implemented algorithms, a benchmarking suite tested the models on a $6 \times 6$ grid (comprising $2^{36}$, or approximately 68.7 billion, discrete states). The algorithms were tested across varying levels of initial complexity: Easy (3 toggles), Medium (7 toggles), and Hard (12 toggles). A strict 60-second execution timeout was enforced to identify computational bottlenecks. The empirical results revealed critical insights into state-space explosion, heuristic overhead, and the absolute limits of tree search.
+
+### 4.1 The Absolute Limit of Uninformed Search
+The expansion to a $6 \times 6$ grid definitively exposed the spatial and temporal boundaries of uninformed search architectures. 
+* On the **Easy (3-click)** configuration, Breadth-First Search (BFS) resolved the board but required nearly 5 seconds and stored over 55,000 states in memory. Iterative Deepening Search (IDS) successfully eliminated this memory bottleneck (storing only 3 states) and resolved the board in 0.41 seconds, despite analyzing three times as many nodes as BFS. 
+* However, at a scramble depth of just **7 (Medium)**, the state space completely overwhelmed both algorithms. Both BFS and IDS failed to return a solution within the 60-second timeout, empirically proving that uninformed search is fundamentally incapable of resolving $6 \times 6$ grids beyond trivial depths due to the exponential branching factor.
+
+### 4.2 Heuristic Overhead and the Collapse of "Smart" Metrics
+A core finding of this study is that highly informed heuristics can become computationally intractable if their calculation overhead is too severe. 
+* The **Islands** heuristic conceptually provides excellent structural awareness by counting connected components. However, running a localized graph traversal for every generated node proved fatal on the $6 \times 6$ board. A* (Islands) timed out on both the Medium and Hard configurations. Even when forced into a greedier search via Weighted A*, the Islands heuristic barely survived the Medium benchmark, taking **49.46 seconds** to process just 25,200 nodes.
+* Conversely, the mathematically rudimentary **Hamming** heuristic dominated the heuristic categories. On the **Hard (12-click)** board, A* (Hamming) successfully navigated the $2^{36}$ state space to find the optimal 12-move path in **12.72 seconds**, proving that raw $O(N)$ calculation speed is often vastly superior to complex structural pruning in densely branching trees.
+
+### 4.3 Pruning Efficiency vs. Optimality (Weighted A*)
+The benchmark data provided a textbook demonstration of the theoretical trade-offs inherent in Weighted A* ($f(n) = g(n) + W \cdot h(n)$). By artificially inflating the heuristic's influence, the algorithm prioritizes speed and memory efficiency over strict optimality.
+* **Execution Velocity:** On the Hard board, standard A* (Hamming) required 12.72 seconds and analyzed 10,915 nodes. By applying a weight, Weighted A* (Hamming) aggressively pruned the tree, analyzing only 3,104 nodes and solving the board in just **4.76 seconds** (a nearly 3x speedup).
+* **Loss of Optimality:** The cost of this aggressive pruning was observed in the Light Chasing heuristic. While the true optimal path for the Hard board was 12 moves, Weighted A* (Light Chasing) returned a sub-optimal **14-move sequence**. This confirms that while weights reliably accelerate execution, they break the admissibility threshold and induce sub-optimal, greedy behavior.
+
+### 4.4 Algebraic Supremacy
+The benchmarking suite conclusively demonstrated that domain-specific mathematical abstraction is vastly superior to generalized tree search for the Lights Out puzzle. 
+* While informed search algorithms struggled against the 60-second timeout and combinatorial explosion of the Hard configuration, **Gaussian Elimination over GF(2)** bypassed state-space exploration entirely. 
+* By reducing the $6 \times 6$ board to a matrix and solving it as a system of linear equations, Gaussian Elimination maintained a deterministic execution time of **~0.001 seconds** across the Easy, Medium, and Hard configurations. It delivered optimal solutions instantaneously, proving that algebraic modeling is the definitive, computationally perfect approach to resolving this specific mathematical puzzle.
 
 ---
 
