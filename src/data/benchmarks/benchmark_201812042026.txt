@@ -1,0 +1,32 @@
+========================================
+LIGHTS OUT AI BENCHMARK REPORT
+Date/Time: 2026-04-12 20:18:46
+Initial Difficulty (Random Clicks): 12
+========================================
+
+Initial Board State:
+0 0 0 1 0
+1 1 1 1 0
+1 0 0 0 0
+1 0 0 1 1
+0 0 1 1 1
+
+----------------------------------------
+ALGORITHM: BFS
+Status: Timeout (>60s)
+Execution Time: >60.000000 seconds
+Path: N/A
+----------------------------------------
+ALGORITHM: IDS
+Status: Timeout (>60s)
+Execution Time: >60.000000 seconds
+Path: N/A
+----------------------------------------
+ALGORITHM: Gaussian
+Status: Solved
+Solution Length: 16 moves
+Nodes Analyzed: 75
+Memory (States in RAM): 25
+Execution Time: 0.001513 seconds
+Path: [(0, 0), (0, 1), (0, 2), (0, 4), (1, 1), (1, 3), (1, 4), (2, 0), (2, 1), (2, 3), (2, 4), (3, 0), (3, 1), (3, 3), (3, 4), (4, 1)]
+----------------------------------------
