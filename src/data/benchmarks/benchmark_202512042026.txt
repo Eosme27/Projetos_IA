@@ -1,0 +1,78 @@
+========================================
+LIGHTS OUT AI BENCHMARK REPORT
+Date/Time: 2026-04-12 20:25:20
+Initial Difficulty (Random Clicks): 7
+========================================
+
+Initial Board State:
+0 0 1 1 1 0
+1 0 0 1 1 0
+1 1 0 1 0 1
+1 1 0 1 0 1
+0 1 1 0 0 0
+1 0 0 1 1 1
+
+----------------------------------------
+ALGORITHM: BFS
+Status: Timeout (>60s)
+Execution Time: >60.000000 seconds
+Path: N/A
+----------------------------------------
+ALGORITHM: IDS
+Status: Timeout (>60s)
+Execution Time: >60.000000 seconds
+Path: N/A
+----------------------------------------
+ALGORITHM: Gaussian
+Status: Solved
+Solution Length: 7 moves
+Nodes Analyzed: 127
+Memory (States in RAM): 36
+Execution Time: 0.002571 seconds
+Path: [(0, 3), (2, 0), (2, 4), (3, 4), (4, 1), (5, 0), (5, 4)]
+----------------------------------------
+ALGORITHM: A* (Hamming)
+Status: Solved
+Solution Length: 7 moves
+Nodes Analyzed: 8
+Memory (States in RAM): 242
+Execution Time: 0.007996 seconds
+Path: [(0, 3), (2, 0), (5, 4), (2, 4), (3, 4), (4, 1), (5, 0)]
+----------------------------------------
+ALGORITHM: A* (Light Chasing)
+Status: Solved
+Solution Length: 7 moves
+Nodes Analyzed: 9
+Memory (States in RAM): 275
+Execution Time: 0.009533 seconds
+Path: [(0, 3), (2, 0), (4, 1), (2, 4), (3, 4), (5, 0), (5, 4)]
+----------------------------------------
+ALGORITHM: A* (Islands)
+Status: Timeout (>60s)
+Execution Time: >60.000000 seconds
+Path: N/A
+----------------------------------------
+ALGORITHM: WA* (Hamming)
+Status: Solved
+Solution Length: 7 moves
+Nodes Analyzed: 8
+Memory (States in RAM): 242
+Execution Time: 0.008467 seconds
+Path: [(0, 3), (2, 0), (5, 4), (2, 4), (3, 4), (4, 1), (5, 0)]
+----------------------------------------
+ALGORITHM: WA* (Light Chasing)
+Status: Solved
+Solution Length: 7 moves
+Nodes Analyzed: 8
+Memory (States in RAM): 242
+Execution Time: 0.008559 seconds
+Path: [(0, 3), (2, 0), (4, 1), (2, 4), (3, 4), (5, 0), (5, 4)]
+----------------------------------------
+ALGORITHM: WA* (Islands)
+Status: Solved
+Solution Length: 7 moves
+Nodes Analyzed: 25200
+Memory (States in RAM): 541626
+Execution Time: 49.460081 seconds
+Path: [(3, 4), (4, 1), (2, 0), (5, 0), (0, 3), (2, 4), (5, 4)]
+----------------------------------------

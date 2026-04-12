@@ -1,0 +1,72 @@
+========================================
+LIGHTS OUT AI BENCHMARK REPORT
+Date/Time: 2026-04-12 20:31:28
+Initial Difficulty (Random Clicks): 12
+========================================
+
+Initial Board State:
+0 0 0 1 0 0
+0 0 1 1 1 1
+0 0 1 0 0 0
+1 0 0 1 0 0
+1 1 1 0 1 0
+1 0 0 0 0 1
+
+----------------------------------------
+ALGORITHM: BFS
+Status: Timeout (>60s)
+Execution Time: >60.000000 seconds
+Path: N/A
+----------------------------------------
+ALGORITHM: IDS
+Status: Timeout (>60s)
+Execution Time: >60.000000 seconds
+Path: N/A
+----------------------------------------
+ALGORITHM: Gaussian
+Status: Solved
+Solution Length: 12 moves
+Nodes Analyzed: 127
+Memory (States in RAM): 36
+Execution Time: 0.000999 seconds
+Path: [(0, 1), (0, 3), (1, 0), (1, 1), (1, 4), (2, 1), (2, 3), (3, 2), (3, 3), (4, 0), (4, 4), (5, 5)]
+----------------------------------------
+ALGORITHM: A* (Hamming)
+Status: Solved
+Solution Length: 12 moves
+Nodes Analyzed: 10915
+Memory (States in RAM): 284214
+Execution Time: 12.719435 seconds
+Path: [(4, 0), (1, 4), (2, 3), (0, 3), (0, 1), (1, 1), (1, 0), (2, 1), (3, 2), (3, 3), (4, 4), (5, 5)]
+----------------------------------------
+ALGORITHM: A* (Light Chasing)
+Status: Timeout (>60s)
+Execution Time: >60.000000 seconds
+Path: N/A
+----------------------------------------
+ALGORITHM: A* (Islands)
+Status: Timeout (>60s)
+Execution Time: >60.000000 seconds
+Path: N/A
+----------------------------------------
+ALGORITHM: WA* (Hamming)
+Status: Solved
+Solution Length: 12 moves
+Nodes Analyzed: 3104
+Memory (States in RAM): 85443
+Execution Time: 4.762158 seconds
+Path: [(4, 0), (1, 4), (2, 3), (0, 3), (5, 5), (4, 4), (3, 3), (3, 2), (2, 1), (1, 1), (0, 1), (1, 0)]
+----------------------------------------
+ALGORITHM: WA* (Light Chasing)
+Status: Solved
+Solution Length: 14 moves
+Nodes Analyzed: 15687
+Memory (States in RAM): 390965
+Execution Time: 19.246606 seconds
+Path: [(4, 0), (1, 4), (2, 3), (0, 3), (5, 4), (0, 1), (1, 1), (1, 0), (2, 1), (3, 2), (3, 3), (4, 4), (5, 4), (5, 5)]
+----------------------------------------
+ALGORITHM: WA* (Islands)
+Status: Timeout (>60s)
+Execution Time: >60.000000 seconds
+Path: N/A
+----------------------------------------
